@@ -1,10 +1,3 @@
-//
-//  Project3App.swift
-//  Project3
-//
-//  Created by Gung  on 22/05/26.
-//
-
 import SwiftUI
 
 @main
