@@ -1,197 +1,163 @@
 import SwiftUI
 
 struct SetupView: View {
-    let game: String
+    let initialPlayers: Int
     let onBack: () -> Void
-    let onStart: (Difficulty, Int, GameLang) -> Void
+    let onStart: (Difficulty, Int, GameLang, Int) -> Void
 
+    @State private var players: Int
     @State private var difficulty: Difficulty = .gentle
-    @State private var duration: Int = 60
-    @State private var lang: GameLang = .english
+
+    init(initialPlayers: Int,
+         onBack: @escaping () -> Void,
+         onStart: @escaping (Difficulty, Int, GameLang, Int) -> Void) {
+        self.initialPlayers = initialPlayers
+        self.onBack = onBack
+        self.onStart = onStart
+        _players = State(initialValue: initialPlayers)
+    }
 
     var body: some View {
         ZStack {
             Color.sunnyBg.ignoresSafeArea()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    topBar
-                    gameCard.padding(.top, 20)
-                    sectionLabel("HOW FAST?").padding(.top, 26)
-                    difficultyPicker.padding(.top, 10)
-                    sectionLabel("LANGUAGE").padding(.top, 22)
-                    languagePicker.padding(.top, 10)
-                    sectionLabel("ROUND LENGTH").padding(.top, 22)
-                    durationPicker.padding(.top, 10)
-                    BigButton(label: "Start playing", tone: .ink, sfIcon: "play.fill") {
-                        onStart(difficulty, duration, lang)
+            ZStack {
+                RadialGradient(colors: [Color(hex: "FFE9A8"), .clear],
+                               center: .topLeading, startRadius: 0, endRadius: 300)
+                    .opacity(0.6)
+            }
+            .ignoresSafeArea().allowsHitTesting(false)
+
+            // Back button (top-left, after safe area)
+            VStack {
+                HStack {
+                    Button(action: onBack) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.sunnyInk)
+                            .frame(width: 44, height: 44)
+                            .background(Color.sunnyPaper)
+                            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(Color.sunnyRule, lineWidth: 1.5))
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
-                    .padding(.top, 30)
-                    .padding(.bottom, 40)
+                    .buttonStyle(.plain)
+                    Spacer()
                 }
-                .padding(.horizontal, 22)
+                .padding(.top, 14)
+                .padding(.trailing, 22)
+                Spacer()
             }
-        }
-    }
 
-    // MARK: Top Bar
+            // Main two-column layout
+            HStack(alignment: .center, spacing: 32) {
+                // LEFT — title + one-line instruction
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Get ready")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundColor(.sunnyInk2)
+                        .tracking(2)
+                        .textCase(.uppercase)
 
-    private var topBar: some View {
-        HStack {
-            Button(action: onBack) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(.sunnyInk)
-                    .frame(width: 52, height: 52)
-                    .background(Color.sunnyPaper)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color.sunnyRule, lineWidth: 1.5))
-            }
-            .buttonStyle(.plain)
-            Spacer()
-            HStack(spacing: 8) {
-                Image(systemName: "speaker.wave.2").font(.system(size: 14))
-                Text("Voice on")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-            }
-            .foregroundColor(.sunnyInk)
-            .padding(.horizontal, 14).padding(.vertical, 10)
-            .background(Color.sunnyPaper)
-            .clipShape(Capsule())
-            .overlay(Capsule().stroke(Color.sunnyRule, lineWidth: 1.5))
-        }
-        .padding(.top, 14)
-    }
+                    Text("Catch the\nWords")
+                        .font(.system(size: 50, weight: .heavy, design: .rounded))
+                        .foregroundColor(.sunnyInk)
+                        .lineSpacing(-2)
+                        .padding(.top, 6)
 
-    // MARK: Game Card
+                    Text(players == 2
+                         ? "Stand together. Reach up to grab words before they fall."
+                         : "Reach up to grab words before they fall to the ground.")
+                        .font(.system(size: 17, design: .rounded))
+                        .foregroundColor(.sunnyInk)
+                        .lineSpacing(3)
+                        .padding(.top, 16)
+                        .frame(maxWidth: 280, alignment: .leading)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-    private var gameCard: some View {
-        ZStack(alignment: .topTrailing) {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(Color.sunnyLemon)
-                .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(Color(hex: "F0C824"), lineWidth: 1.5))
-                .shadow(color: Color(hex: "E2B61A").opacity(0.35), radius: 0, x: 0, y: 6)
+                // RIGHT — player picker + start button + speed chips
+                VStack(spacing: 14) {
+                    // Players
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Players")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundColor(.sunnyInk2)
+                            .tracking(2)
+                            .textCase(.uppercase)
 
-            VStack(alignment: .leading, spacing: 14) {
-                Text("HOW TO PLAY")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundColor(.sunnyInk2)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                        HStack(spacing: 10) {
+                            playerButton(count: 1, icon: "👤")
+                            playerButton(count: 2, icon: "👥")
+                        }
+                    }
 
-                Text("Catch the Words")
-                    .font(.system(size: 30, weight: .heavy, design: .rounded))
-                    .foregroundColor(.sunnyInk)
+                    // Big start button
+                    Button {
+                        onStart(difficulty, 60, .english, players)
+                    } label: {
+                        HStack(spacing: 14) {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 22, weight: .bold))
+                            Text("Start")
+                                .font(.system(size: 26, weight: .heavy, design: .rounded))
+                        }
+                        .foregroundColor(.sunnyLemon)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 84)
+                        .background(Color.sunnyInk)
+                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        .shadow(color: .black, radius: 0, x: 0, y: 6)
+                    }
+                    .buttonStyle(.plain)
 
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach([
-                        ("1", "Words will fall from the top of the screen."),
-                        ("2", "Reach your hand into the camera view."),
-                        ("3", "Say the word and grab it before it drops."),
-                    ], id: \.0) { num, txt in
-                        HStack(alignment: .top, spacing: 12) {
-                            ZStack {
-                                Circle().fill(Color.sunnyInk).frame(width: 28, height: 28)
-                                Text(num)
-                                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                                    .foregroundColor(.sunnyLemon)
+                    // Tiny speed chips
+                    HStack(spacing: 6) {
+                        Text("Speed:")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundColor(.sunnyInk3)
+                        ForEach(Difficulty.allCases, id: \.self) { d in
+                            Button { difficulty = d } label: {
+                                Text(d.label)
+                                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                                    .foregroundColor(difficulty == d ? .sunnyLemon : .sunnyInk2)
+                                    .padding(.horizontal, 10).padding(.vertical, 4)
+                                    .background(difficulty == d ? Color.sunnyInk : Color.clear)
+                                    .overlay(Capsule()
+                                        .stroke(difficulty == d ? Color.clear : Color.sunnyRule, lineWidth: 1))
+                                    .clipShape(Capsule())
                             }
-                            Text(txt)
-                                .font(.system(size: 16, design: .rounded))
-                                .foregroundColor(.sunnyInk)
-                                .lineSpacing(3)
-                                .fixedSize(horizontal: false, vertical: true)
+                            .buttonStyle(.plain)
                         }
                     }
                 }
+                .frame(maxWidth: .infinity)
             }
-            .padding(26)
+            .padding(.trailing, 22)
+            .padding(.top, 60)
+            .padding(.bottom, 20)
         }
     }
 
-    // MARK: Pickers
-
-    private var difficultyPicker: some View {
-        HStack(spacing: 10) {
-            ForEach(Difficulty.allCases, id: \.self) { d in
-                let sel = difficulty == d
-                Button { difficulty = d } label: {
-                    VStack(spacing: 4) {
-                        Text(d.emoji).font(.system(size: 24))
-                        Text(d.label)
-                            .font(.system(size: 15, weight: .bold, design: .rounded))
-                        Text(d.sub)
-                            .font(.system(size: 11, design: .rounded))
-                            .opacity(0.7)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
+    @ViewBuilder
+    private func playerButton(count: Int, icon: String) -> some View {
+        let sel = players == count
+        Button { players = count } label: {
+            HStack(spacing: 12) {
+                Text(icon).font(.system(size: 26))
+                Text("\(count)")
+                    .font(.system(size: 22, weight: .heavy, design: .rounded))
                     .foregroundColor(sel ? .sunnyLemon : .sunnyInk)
-                    .background(sel ? Color.sunnyInk : Color.sunnyPaper)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(sel ? Color.sunnyInk : Color.sunnyRule, lineWidth: 1.5))
-                    .shadow(color: sel ? .black.opacity(0.25) : Color.sunnyRule,
-                            radius: 0, x: 0, y: sel ? 4 : 3)
-                }
-                .buttonStyle(.plain)
             }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(sel ? Color.sunnyInk : Color.sunnyPaper)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(sel ? Color.clear : Color.sunnyRule, lineWidth: 1.5))
+            .shadow(color: sel ? .black : Color(hex: "E0D4A6"), radius: 0, x: 0, y: sel ? 4 : 3)
         }
-    }
-
-    private var languagePicker: some View {
-        HStack(spacing: 0) {
-            ForEach(GameLang.allCases, id: \.self) { l in
-                let sel = lang == l
-                Button { lang = l } label: {
-                    HStack(spacing: 8) {
-                        Text(l.flag).font(.system(size: 20))
-                        Text(l.label)
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                    }
-                    .foregroundColor(sel ? .sunnyLemon : .sunnyInk)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(sel ? Color.sunnyInk : Color.clear)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(6)
-        .background(Color.sunnyPaper)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .stroke(Color.sunnyRule, lineWidth: 1.5))
-    }
-
-    private var durationPicker: some View {
-        HStack(spacing: 10) {
-            ForEach([30, 60, 90], id: \.self) { s in
-                let sel = duration == s
-                Button { duration = s } label: {
-                    Text("\(s)s")
-                        .font(.system(size: 22, weight: .heavy, design: .rounded))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
-                        .foregroundColor(sel ? .white : .sunnyInk)
-                        .background(sel ? Color.sunnyCoral : Color.sunnyPaper)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(sel ? Color.sunnyCoral : Color.sunnyRule, lineWidth: 1.5))
-                        .shadow(color: sel ? Color(hex: "C84A2E") : Color.sunnyRule,
-                                radius: 0, x: 0, y: sel ? 4 : 3)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    private func sectionLabel(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 14, weight: .bold, design: .rounded))
-            .foregroundColor(.sunnyInk2)
+        .buttonStyle(.plain)
     }
 }
 
-#Preview { SetupView(game: "catch", onBack: {}, onStart: { _, _, _ in }) }
+#Preview { SetupView(initialPlayers: 1, onBack: {}, onStart: { _, _, _, _ in }) }

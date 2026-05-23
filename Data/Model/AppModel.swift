@@ -4,9 +4,9 @@ import Foundation
 
 enum AppScreen {
     case home
-    case setup(game: String)
-    case play(difficulty: Difficulty, duration: Int, lang: GameLang)
-    case results(score: Int, caught: [String], missed: [String],
+    case setup(game: String, players: Int)
+    case play(difficulty: Difficulty, duration: Int, lang: GameLang, players: Int)
+    case results(p1Score: Int, p2Score: Int, players: Int,
                  difficulty: Difficulty, duration: Int, lang: GameLang)
 }
 
@@ -16,9 +16,7 @@ enum Difficulty: String, CaseIterable, Equatable {
     case gentle, lively, speedy
 
     var label: String { rawValue.capitalized }
-    var emoji: String { ["gentle": "🌿", "lively": "🍃", "speedy": "💨"][rawValue]! }
-    var sub: String   { ["gentle": "slow drift", "lively": "medium", "speedy": "fast"][rawValue]! }
-    var speedMult: Double { ["gentle": 0.9, "lively": 1.2, "speedy": 1.6][rawValue]! }
+    var speedMult: Double  { ["gentle": 0.9, "lively": 1.2, "speedy": 1.6][rawValue]! }
     var spawnInterval: Double { ["gentle": 2.0, "lively": 1.5, "speedy": 1.1][rawValue]! }
 }
 

@@ -6,6 +6,7 @@ extension Color {
     static let sunnyBg     = Color(hex: "FFF6E0")
     static let sunnyYellow = Color(hex: "FFD84D")
     static let sunnyCoral  = Color(hex: "FF7A5A")
+    static let sunnyTeal   = Color(hex: "2EB8A6")
     static let sunnyInk    = Color(hex: "1C1A15")
     static let sunnyInk2   = Color(hex: "5A554A")
     static let sunnyInk3   = Color(hex: "968F7F")
@@ -68,6 +69,15 @@ enum CardTone {
         case .coral:  return Color(hex: "F0997D")
         case .teal:   return Color(hex: "7BCDBE")
         case .ink:    return Color(hex: "1F1B16")
+        }
+    }
+    var shadow: Color {
+        switch self {
+        case .cream:  return Color(hex: "A8985F")
+        case .yellow: return Color(hex: "C9A41A")
+        case .coral:  return Color(hex: "C84A2E")
+        case .teal:   return Color(hex: "3F9789")
+        case .ink:    return .black
         }
     }
 }

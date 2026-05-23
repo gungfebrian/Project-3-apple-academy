@@ -18,6 +18,7 @@ struct FallingWord: Identifiable {
 struct WordPopper: Identifiable {
     let id = UUID()
     let text: String
+    let isP2: Bool       // VS mode: true = caught by player 2
     var yOffset: CGFloat = 0
     var opacity: Double = 1
 }

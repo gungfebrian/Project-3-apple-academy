@@ -1,276 +1,284 @@
 import SwiftUI
 
 struct HomeView: View {
-    let onPlay: (String) -> Void
+    let onSelect: (Int) -> Void
 
-    @State private var tab: AppTab = .home
-
-    private var greeting: String {
-        let h = Calendar.current.component(.hour, from: Date())
-        if h < 12 { return "Good morning" }
-        if h < 18 { return "Good afternoon" }
-        return "Good evening"
+    private struct Mode {
+        let title: String
+        let sub: String
+        let tone: CardTone
+        let icon: String
+        let players: Int
+        let tilt: Double
     }
 
-    var body: some View {
-        ZStack(alignment: .bottom) {
-            Color.sunnyBg.ignoresSafeArea()
+    private let modes: [Mode] = [
+        Mode(title: "1 Player",  sub: "Solo practice",        tone: .yellow, icon: "👤", players: 1, tilt: -0.6),
+        Mode(title: "2 Players", sub: "Face-off · same room", tone: .coral,  icon: "👥", players: 2, tilt:  0.6),
+        Mode(title: "Family",    sub: "Call grandkids",       tone: .teal,   icon: "📞", players: 2, tilt: -0.6),
+    ]
 
-            // Warm radial gradients (matches prototype background)
+    var body: some View {
+        ZStack {
+            // Paper background with warm gradients
+            Color.sunnyBg.ignoresSafeArea()
             ZStack {
                 RadialGradient(colors: [Color(hex: "FFE9A8"), .clear],
-                               center: .topLeading, startRadius: 0, endRadius: 300)
-                    .opacity(0.7)
+                               center: .topLeading, startRadius: 0, endRadius: 350)
+                    .opacity(0.65)
                 RadialGradient(colors: [Color(hex: "FFD9CB"), .clear],
-                               center: .bottomTrailing, startRadius: 0, endRadius: 350)
-                    .opacity(0.6)
+                               center: .bottomTrailing, startRadius: 0, endRadius: 400)
+                    .opacity(0.55)
             }
             .ignoresSafeArea()
             .allowsHitTesting(false)
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    greetingRow
-                    streakStrip.padding(.top, 18)
-                    heroCard.padding(.top, 22)
-                    moreGamesHeader.padding(.top, 28)
-                    gameGrid.padding(.top, 14)
-                    familyCTA.padding(.top, 22)
-                    Spacer().frame(height: 110)
+            // Faint silhouettes background
+            silhouettesBg.ignoresSafeArea().allowsHitTesting(false)
+
+            // Static ambient word cloud
+            wordCloud.allowsHitTesting(false)
+
+            // Layout
+            VStack(spacing: 0) {
+                headerBar
+                    .padding(.top, 16)
+                    .padding(.trailing, 22)
+
+                HStack(alignment: .center, spacing: 22) {
+                    titleBlock
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    modeCardStack
+                        .frame(maxWidth: .infinity)
                 }
-                .padding(.horizontal, 22)
-            }
+                .padding(.trailing, 22)
+                .frame(maxHeight: .infinity)
 
-            floatingTabBar.padding(.bottom, 18)
+                cameraHint
+                    .padding(.bottom, 14)
+                    .padding(.trailing, 22)
+            }
         }
     }
 
-    // MARK: Greeting
+    // MARK: - Background silhouettes
 
-    private var greetingRow: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(greeting + ",")
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
-                    .foregroundColor(.sunnyInk2)
-                Text("Grandma Eli")
-                    .font(.system(size: 30, weight: .bold, design: .rounded))
+    private var silhouettesBg: some View {
+        Canvas { ctx, size in
+            ctx.opacity = 0.06
+            let w = size.width, h = size.height
+
+            // Person 1 (left)
+            let h1x = w * 0.30, h1y = h * 0.72, hr: CGFloat = 55
+            ctx.fill(Path(ellipseIn: CGRect(x: h1x - hr, y: h1y - hr, width: hr * 2, height: hr * 2)),
+                     with: .color(.sunnyInk))
+            var b1 = Path()
+            b1.move(to: CGPoint(x: h1x - 80, y: h))
+            b1.addCurve(to: CGPoint(x: h1x, y: h1y + hr),
+                        control1: CGPoint(x: h1x - 80, y: h - 50),
+                        control2: CGPoint(x: h1x - 30, y: h1y + hr))
+            b1.addCurve(to: CGPoint(x: h1x + 80, y: h),
+                        control1: CGPoint(x: h1x + 30, y: h1y + hr),
+                        control2: CGPoint(x: h1x + 80, y: h - 50))
+            b1.closeSubpath()
+            ctx.fill(b1, with: .color(.sunnyInk))
+
+            // Person 2 (right)
+            let h2x = w * 0.70
+            ctx.fill(Path(ellipseIn: CGRect(x: h2x - hr, y: h1y - hr, width: hr * 2, height: hr * 2)),
+                     with: .color(.sunnyInk))
+            var b2 = Path()
+            b2.move(to: CGPoint(x: h2x - 80, y: h))
+            b2.addCurve(to: CGPoint(x: h2x, y: h1y + hr),
+                        control1: CGPoint(x: h2x - 80, y: h - 50),
+                        control2: CGPoint(x: h2x - 30, y: h1y + hr))
+            b2.addCurve(to: CGPoint(x: h2x + 80, y: h),
+                        control1: CGPoint(x: h2x + 30, y: h1y + hr),
+                        control2: CGPoint(x: h2x + 80, y: h - 50))
+            b2.closeSubpath()
+            ctx.fill(b2, with: .color(.sunnyInk))
+        }
+    }
+
+    // MARK: - Floating word cloud (static, ambient)
+
+    private let ambientWords = ["cloud", "laugh", "window", "tea", "garden",
+                                "smile", "memory", "sunshine", "umbrella", "blanket"]
+    private var wordCloud: some View {
+        GeometryReader { geo in
+            let w = geo.size.width, h = geo.size.height
+            ForEach(Array(ambientWords.enumerated()), id: \.offset) { idx, word in
+                let xFrac = Double(6 + (idx * 73) % 88) / 100.0
+                let yFrac = Double(15 + (idx * 47) % 70) / 100.0
+                let rot   = Double((idx * 31) % 12) - 6.0
+                let size  = CGFloat(14 + idx % 4 * 3)
+                let opa   = 0.09 + Double(idx % 3) * 0.04
+                Text(word)
+                    .font(.system(size: size, weight: .bold, design: .rounded))
                     .foregroundColor(.sunnyInk)
+                    .opacity(opa)
+                    .rotationEffect(.degrees(rot))
+                    .position(x: xFrac * w, y: yFrac * h)
             }
-            Spacer()
-            ZStack {
-                Circle()
-                    .fill(LinearGradient(colors: [.sunnyYellow, .sunnyCoral],
-                                        startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .frame(width: 56, height: 56)
-                    .shadow(color: Color(hex: "C9A41A"), radius: 0, x: 0, y: 4)
-                Text("👵").font(.system(size: 26))
-            }
-        }
-        .padding(.top, 14)
-    }
-
-    // MARK: Streak Strip
-
-    private var streakStrip: some View {
-        HStack(spacing: 14) {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.sunnyLemon)
-                .frame(width: 44, height: 44)
-                .overlay(Text("🔥").font(.system(size: 22)))
-            VStack(alignment: .leading, spacing: 2) {
-                Text("5-day streak")
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
-                    .foregroundColor(.sunnyInk)
-                Text("Keep it going — play once today")
-                    .font(.system(size: 13, design: .rounded))
-                    .foregroundColor(.sunnyInk2)
-            }
-            Spacer()
-            HStack(spacing: 4) {
-                ForEach(1...7, id: \.self) { i in
-                    Circle()
-                        .fill(i <= 5 ? Color.sunnyYel2 : Color.sunnyRule)
-                        .frame(width: 10, height: 10)
-                }
-            }
-        }
-        .padding(14)
-        .background(Color.white.opacity(0.6))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .stroke(Color.sunnyRule, lineWidth: 1.5))
-    }
-
-    // MARK: Hero Card
-
-    private var heroCard: some View {
-        ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(Color.sunnyLemon)
-                .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(Color(hex: "F0C824"), lineWidth: 1.5))
-                .shadow(color: Color(hex: "E2B61A").opacity(0.35), radius: 22, x: 0, y: 8)
-
-            Text("☁️")
-                .font(.system(size: 110))
-                .opacity(0.3)
-                .rotationEffect(.degrees(15))
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                .offset(x: 20, y: -28)
-                .allowsHitTesting(false)
-
-            VStack(alignment: .leading, spacing: 0) {
-                Text("TODAY'S CHALLENGE")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundColor(.sunnyLemon)
-                    .padding(.horizontal, 10).padding(.vertical, 4)
-                    .background(Color.sunnyInk)
-                    .clipShape(Capsule())
-
-                Text("Catch the Words\nfrom the sky")
-                    .font(.system(size: 28, weight: .heavy, design: .rounded))
-                    .foregroundColor(.sunnyInk)
-                    .lineSpacing(2)
-                    .padding(.top, 10)
-
-                Text("Use your camera. Reach out and grab the falling words.")
-                    .font(.system(size: 15, design: .rounded))
-                    .foregroundColor(.sunnyInk2)
-                    .padding(.top, 8)
-                    .frame(maxWidth: 260, alignment: .leading)
-
-                Button { onPlay("catch") } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: "play.fill").font(.system(size: 16, weight: .bold))
-                        Text("Let's play")
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
-                    }
-                    .foregroundColor(.sunnyLemon)
-                    .padding(.horizontal, 22).padding(.vertical, 12)
-                    .background(Color.sunnyInk)
-                    .clipShape(Capsule())
-                    .shadow(color: .black.opacity(0.35), radius: 0, x: 0, y: 3)
-                }
-                .buttonStyle(.plain)
-                .padding(.top, 16)
-            }
-            .padding(22)
         }
     }
 
-    // MARK: More Games
+    // MARK: - Header bar
 
-    private var moreGamesHeader: some View {
+    private var headerBar: some View {
         HStack {
-            Text("More games")
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .foregroundColor(.sunnyInk)
-            Spacer()
-            Text("See all")
-                .font(.system(size: 13, design: .rounded))
-                .foregroundColor(.sunnyInk3)
-        }
-    }
-
-    private var gameGrid: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
-            gameCard("Mirror Me",       sub: "Camera • 2 min",   tone: .coral, emoji: "👄", tilt: -0.6, game: "mirror")
-            gameCard("Family Charades", sub: "2+ players",        tone: .teal,  emoji: "🎭", tilt:  0.6, game: "charades")
-            gameCard("Word Hunt",       sub: "Point your camera", tone: .cream, emoji: "🔍", tilt: -0.6, game: "hunt")
-        }
-    }
-
-    private func gameCard(_ title: String, sub: String, tone: CardTone,
-                          emoji: String, tilt: Double, game: String) -> some View {
-        Button { onPlay(game) } label: {
-            VStack(alignment: .leading) {
-                Text(emoji).font(.system(size: 38))
-                Spacer()
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundColor(tone == .ink ? Color.sunnyBg : .sunnyInk)
-                    Text(sub)
-                        .font(.system(size: 12, design: .rounded))
-                        .foregroundColor(tone == .ink ? Color.sunnyInk3 : .sunnyInk2)
+            // Sun wordmark (respects left safe area)
+            HStack(spacing: 8) {
+                ZStack {
+                    Circle()
+                        .fill(LinearGradient(colors: [.sunnyYellow, .sunnyCoral],
+                                            startPoint: .topLeading, endPoint: .bottomTrailing))
+                    Text("☀").font(.system(size: 14))
                 }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16)
-            .frame(minHeight: 150)
-            .background(tone.bg)
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(tone.border, lineWidth: 1.5))
-            .rotationEffect(.degrees(tilt))
-            .shadow(color: Color.sunnyInk.opacity(0.08), radius: 10, x: 0, y: 6)
-        }
-        .buttonStyle(.plain)
-    }
+                .frame(width: 28, height: 28)
+                .shadow(color: Color(hex: "C9A41A"), radius: 0, x: 0, y: 2)
 
-    // MARK: Family CTA
-
-    private var familyCTA: some View {
-        HStack(spacing: 16) {
-            Circle()
-                .fill(Color.sunnyYellow)
-                .frame(width: 52, height: 52)
-                .overlay(Image(systemName: "phone.fill")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundColor(.sunnyInk))
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Play with Maya")
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
-                    .foregroundColor(Color(hex: "FFF6E0"))
-                Text("Your granddaughter is online")
-                    .font(.system(size: 13, design: .rounded))
-                    .foregroundColor(Color(hex: "C9C2A8"))
+                Text("Sunny")
+                    .font(.system(size: 18, weight: .heavy, design: .rounded))
+                    .foregroundColor(.sunnyInk)
             }
+
             Spacer()
-            Text("Call")
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundColor(.sunnyInk)
-                .padding(.horizontal, 14).padding(.vertical, 8)
-                .background(Color.sunnyYellow)
+
+            // Streak + gear
+            HStack(spacing: 10) {
+                HStack(spacing: 6) {
+                    Text("🔥").font(.system(size: 14))
+                    Text("5")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundColor(.sunnyInk)
+                }
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(Color.sunnyPaper)
+                .overlay(Capsule().stroke(Color.sunnyRule, lineWidth: 1.5))
                 .clipShape(Capsule())
-        }
-        .padding(20)
-        .background(Color(hex: "1F1B16"))
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-    }
 
-    // MARK: Tab Bar
-
-    private var floatingTabBar: some View {
-        HStack(spacing: 4) {
-            tabItem(.home,   label: "Play",   icon: "house.fill")
-            tabItem(.streak, label: "Streak", icon: "flame.fill")
-            tabItem(.family, label: "Family", icon: "person.2.fill")
-            tabItem(.me,     label: "Me",     icon: "person.fill")
-        }
-        .padding(8)
-        .background(.ultraThinMaterial)
-        .background(Color.sunnyPaper.opacity(0.55))
-        .clipShape(Capsule())
-        .overlay(Capsule().stroke(Color.sunnyRule, lineWidth: 1.5))
-        .shadow(color: Color.sunnyInk.opacity(0.12), radius: 20, x: 0, y: 8)
-        .padding(.horizontal, 18)
-    }
-
-    private func tabItem(_ t: AppTab, label: String, icon: String) -> some View {
-        Button { tab = t } label: {
-            VStack(spacing: 2) {
-                Image(systemName: icon).font(.system(size: 22, weight: .semibold))
-                Text(label).font(.system(size: 11, weight: .bold, design: .rounded))
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.sunnyPaper)
+                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(Color.sunnyRule, lineWidth: 1.5))
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundColor(.sunnyInk2)
+                }
+                .frame(width: 38, height: 38)
             }
-            .foregroundColor(tab == t ? .sunnyLemon : .sunnyInk)
-            .frame(maxWidth: .infinity)
-            .frame(height: 56)
-            .background(tab == t ? Color.sunnyInk : Color.clear)
-            .clipShape(Capsule())
+        }
+    }
+
+    // MARK: - Title block (left column)
+
+    private var titleBlock: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Party mode · 57+")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundColor(.sunnyLemon)
+                .tracking(2)
+                .padding(.horizontal, 12).padding(.vertical, 4)
+                .background(Color.sunnyInk)
+                .clipShape(Capsule())
+                .rotationEffect(.degrees(-2))
+
+            VStack(alignment: .leading, spacing: -4) {
+                Text("Catch the")
+                    .font(.system(size: 54, weight: .heavy, design: .rounded))
+                Text("words!")
+                    .font(.system(size: 54, weight: .heavy, design: .rounded))
+            }
+            .foregroundColor(.sunnyInk)
+            .padding(.top, 14)
+
+            Text("~ prop me up · step back · play ~")
+                .font(.system(size: 20, weight: .medium).italic())
+                .foregroundColor(.sunnyCoral)
+                .rotationEffect(.degrees(-1.5))
+                .padding(.top, 10)
+        }
+    }
+
+    // MARK: - Mode card stack (right column)
+
+    private var modeCardStack: some View {
+        VStack(spacing: 10) {
+            ForEach(modes.indices, id: \.self) { i in
+                modeCard(modes[i])
+            }
+        }
+    }
+
+    private func modeCard(_ mode: Mode) -> some View {
+        Button { onSelect(mode.players) } label: {
+            HStack(spacing: 14) {
+                // Emoji icon box
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color.white.opacity(0.6))
+                        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.sunnyInk.opacity(0.08), lineWidth: 1.5))
+                    Text(mode.icon).font(.system(size: 26))
+                }
+                .frame(width: 52, height: 52)
+                .flexibleFlexibleItem(false)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(mode.title)
+                        .font(.system(size: 22, weight: .heavy, design: .rounded))
+                        .foregroundColor(.sunnyInk)
+                    Text(mode.sub)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundColor(.sunnyInk2)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                // Play arrow circle
+                ZStack {
+                    Circle().fill(Color.sunnyInk)
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 13))
+                        .foregroundColor(.sunnyLemon)
+                }
+                .frame(width: 38, height: 38)
+            }
+            .padding(14)
+            .background(mode.tone.bg)
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(mode.tone.border, lineWidth: 1.5))
+            .shadow(color: mode.tone.shadow, radius: 0, x: 0, y: 5)
+            .rotationEffect(.degrees(mode.tilt))
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Bottom camera hint
+
+    private var cameraHint: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle().fill(Color.sunnyYellow)
+                Image(systemName: "camera")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.sunnyInk)
+            }
+            .frame(width: 22, height: 22)
+
+            Text("Camera will turn on when you start")
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundColor(.sunnyInk2)
+        }
+    }
+}
+
+// Helper to avoid `.frame(maxWidth: .infinity)` on icon box
+private extension View {
+    func flexibleFlexibleItem(_ flexible: Bool) -> some View {
+        self
     }
 }
 

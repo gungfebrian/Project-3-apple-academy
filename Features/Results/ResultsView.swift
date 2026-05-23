@@ -1,174 +1,177 @@
 import SwiftUI
 
 struct ResultsView: View {
-    let score: Int
-    let caught: [String]
-    let missed: [String]
+    let p1Score: Int
+    let p2Score: Int
+    let players: Int
     let onPlayAgain: () -> Void
     let onHome: () -> Void
 
-    private var stars: Int { score >= 8 ? 3 : score >= 5 ? 2 : 1 }
+    private var isVs: Bool { players == 2 }
+    private var stars: Int { p1Score >= 8 ? 3 : p1Score >= 5 ? 2 : 1 }
+    private var winner: String {
+        guard isVs else { return "solo" }
+        if p1Score > p2Score { return "p1" }
+        if p2Score > p1Score { return "p2" }
+        return "tie"
+    }
 
     var body: some View {
         ZStack {
             Color.sunnyBg.ignoresSafeArea()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    header
-                    scoreCard.padding(.top, 14)
-                    if !caught.isEmpty {
-                        sectionLabel("YOU CAUGHT").padding(.top, 22)
-                        caughtChips.padding(.top, 10)
-                    }
-                    if !missed.isEmpty {
-                        sectionLabel("SLIPPED AWAY").padding(.top, 18)
-                        missedChips.padding(.top, 10)
-                    }
-                    streakBanner.padding(.top, 22)
-                    actions.padding(.top, 26).padding(.bottom, 40)
-                }
-                .padding(.horizontal, 22)
+            ZStack {
+                RadialGradient(colors: [Color(hex: "FFE9A8"), .clear],
+                               center: .top, startRadius: 0, endRadius: 300)
+                    .opacity(0.5)
+                RadialGradient(colors: [Color(hex: "FFD9CB"), .clear],
+                               center: .bottomTrailing, startRadius: 0, endRadius: 350)
+                    .opacity(0.4)
+            }
+            .ignoresSafeArea().allowsHitTesting(false)
+
+            if isVs {
+                vsLayout
+            } else {
+                soloLayout
             }
         }
     }
 
-    // MARK: Header
+    // MARK: - Solo layout
 
-    private var header: some View {
-        Text("~ great catch! ~")
-            .font(.system(size: 30, weight: .bold, design: .rounded))
-            .italic()
-            .foregroundColor(.sunnyCoral)
-            .rotationEffect(.degrees(-3))
-            .frame(maxWidth: .infinity, alignment: .center)
-            .padding(.top, 14)
+    private var soloLayout: some View {
+        VStack(spacing: 0) {
+            Spacer()
+
+            // Stars
+            HStack(spacing: 8) {
+                starView(1)
+                starView(2)
+                starView(3)
+            }
+
+            // Big score
+            Text("\(p1Score)")
+                .font(.system(size: 110, weight: .heavy, design: .rounded))
+                .foregroundColor(.sunnyInk)
+                .padding(.top, 8)
+
+            Text(p1Score == 1 ? "word caught" : "words caught")
+                .font(.system(size: 22, weight: .semibold, design: .rounded))
+                .foregroundColor(.sunnyInk2)
+
+            Spacer()
+
+            actionRow(primaryLabel: "Play again")
+                .padding(.horizontal, 22)
+                .padding(.bottom, 22)
+        }
     }
 
-    // MARK: Score Card
+    // MARK: - VS layout
 
-    private var scoreCard: some View {
-        ZStack(alignment: .topTrailing) {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(Color.sunnyLemon)
-                .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(Color(hex: "F0C824"), lineWidth: 1.5))
-                .shadow(color: Color(hex: "E2B61A").opacity(0.35), radius: 0, x: 0, y: 6)
+    private var vsLayout: some View {
+        let winnerColor: Color = winner == "p1" ? Color(hex: "C9A41A")
+                               : winner == "p2" ? Color(hex: "C84A2E")
+                               : .sunnyInk
+        let emoji   = winner == "tie" ? "🤝" : "🏆"
+        let headline = winner == "tie" ? "It's a tie!"
+                     : winner == "p1"  ? "Player 1 wins!"
+                     : "Player 2 wins!"
+        return VStack(spacing: 0) {
+            Spacer()
 
-            Text("🏆").font(.system(size: 60)).opacity(0.2).padding(16)
+            Text(emoji).font(.system(size: 70))
 
-            VStack(alignment: .leading, spacing: 0) {
-                Text("ROUND COMPLETE")
+            Text(headline)
+                .font(.system(size: 58, weight: .heavy, design: .rounded))
+                .foregroundColor(winnerColor)
+                .multilineTextAlignment(.center)
+                .padding(.top, 6)
+
+            scoreRow.padding(.top, 14)
+
+            Spacer()
+
+            actionRow(primaryLabel: "Rematch")
+                .padding(.horizontal, 22)
+                .padding(.bottom, 22)
+        }
+    }
+
+    private var scoreRow: some View {
+        HStack(spacing: 16) {
+            VStack(spacing: 2) {
+                Text("P1")
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundColor(.sunnyInk2)
                     .tracking(2)
-
-                HStack(alignment: .lastTextBaseline, spacing: 10) {
-                    Text("\(score)")
-                        .font(.system(size: 72, weight: .heavy, design: .rounded))
-                        .foregroundColor(.sunnyInk)
-                    Text("/ \(score + missed.count)")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundColor(.sunnyInk2)
-                }
-                .padding(.top, 8)
-
-                Text("words caught")
-                    .font(.system(size: 16, design: .rounded))
-                    .foregroundColor(.sunnyInk2)
-
-                HStack(spacing: 8) {
-                    ForEach(1...3, id: \.self) { i in
-                        Text("⭐").font(.system(size: 32))
-                            .opacity(i <= stars ? 1 : 0.25)
-                            .grayscale(i <= stars ? 0 : 1)
-                    }
-                }
-                .padding(.top, 14)
+                Text("\(p1Score)")
+                    .font(.system(size: 56, weight: .heavy, design: .rounded))
+                    .foregroundColor(Color(hex: "C9A41A"))
             }
-            .padding(24)
+            Text("–")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundColor(.sunnyInk3)
+            VStack(spacing: 2) {
+                Text("P2")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(.sunnyInk2)
+                    .tracking(2)
+                Text("\(p2Score)")
+                    .font(.system(size: 56, weight: .heavy, design: .rounded))
+                    .foregroundColor(Color(hex: "C84A2E"))
+            }
         }
     }
 
-    // MARK: Word Chips
+    // MARK: - Helpers
 
-    private var caughtChips: some View {
-        FlowLayout(spacing: 8) {
-            ForEach(caught.indices, id: \.self) { i in
+    private func starView(_ index: Int) -> some View {
+        Text("⭐")
+            .font(.system(size: 50))
+            .opacity(index <= stars ? 1 : 0.25)
+            .grayscale(index <= stars ? 0 : 1)
+            .scaleEffect(index == 2 ? 1.18 : 1.0)
+            .offset(y: index == 2 ? -8 : 0)
+    }
+
+    @ViewBuilder
+    private func actionRow(primaryLabel: String) -> some View {
+        HStack(spacing: 12) {
+            Button(action: onHome) {
                 HStack(spacing: 8) {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.sunnyGreen)
-                    Text(caught[i])
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundColor(.sunnyInk)
+                    Image(systemName: "house.fill").font(.system(size: 18))
+                    Text("Home").font(.system(size: 17, weight: .bold, design: .rounded))
                 }
-                .padding(.horizontal, 16).padding(.vertical, 10)
+                .foregroundColor(.sunnyInk)
+                .frame(height: 70)
+                .padding(.horizontal, 22)
                 .background(Color.sunnyPaper)
-                .clipShape(Capsule())
-                .overlay(Capsule().stroke(Color.sunnyRule, lineWidth: 1.5))
-                .rotationEffect(.degrees(i.isMultiple(of: 2) ? -1.5 : 1.5))
+                .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.sunnyRule, lineWidth: 1.5))
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .shadow(color: Color(hex: "E0D4A6"), radius: 0, x: 0, y: 4)
             }
-        }
-    }
+            .buttonStyle(.plain)
 
-    private var missedChips: some View {
-        FlowLayout(spacing: 8) {
-            ForEach(missed, id: \.self) { w in
-                Text(w)
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
-                    .foregroundColor(.sunnyInk3)
-                    .padding(.horizontal, 16).padding(.vertical, 10)
-                    .overlay(Capsule()
-                        .stroke(style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
-                        .foregroundColor(.sunnyInk3))
+            Button(action: onPlayAgain) {
+                HStack(spacing: 12) {
+                    Image(systemName: "play.fill").font(.system(size: 20))
+                    Text(primaryLabel).font(.system(size: 22, weight: .heavy, design: .rounded))
+                }
+                .foregroundColor(.sunnyLemon)
+                .frame(maxWidth: .infinity)
+                .frame(height: 70)
+                .background(Color.sunnyInk)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .shadow(color: .black, radius: 0, x: 0, y: 5)
             }
+            .buttonStyle(.plain)
         }
-    }
-
-    // MARK: Streak Banner
-
-    private var streakBanner: some View {
-        HStack(spacing: 14) {
-            Text("🔥").font(.system(size: 36))
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Streak: 5 days")
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
-                    .foregroundColor(.sunnyInk)
-                Text("One more day to a week!")
-                    .font(.system(size: 13, design: .rounded))
-                    .foregroundColor(.sunnyInk2)
-            }
-            Spacer()
-        }
-        .padding(16)
-        .background(Color(hex: "FFCFC1"))
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous)
-            .stroke(Color(hex: "F0997D"), lineWidth: 1.5))
-    }
-
-    // MARK: Actions
-
-    private var actions: some View {
-        VStack(spacing: 12) {
-            BigButton(label: "Play again", tone: .ink,   sfIcon: "play.fill",  action: onPlayAgain)
-            BigButton(label: "Back home",  tone: .ghost, sfIcon: "house.fill", action: onHome)
-        }
-    }
-
-    private func sectionLabel(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 14, weight: .bold, design: .rounded))
-            .foregroundColor(.sunnyInk2)
-            .tracking(1)
     }
 }
 
 #Preview {
-    ResultsView(
-        score: 7,
-        caught: ["cloud", "sunshine", "window", "garden", "family", "tea", "photo"],
-        missed: ["butterfly", "kettle"],
-        onPlayAgain: {}, onHome: {}
-    )
+    ResultsView(p1Score: 7, p2Score: 0, players: 1, onPlayAgain: {}, onHome: {})
 }
